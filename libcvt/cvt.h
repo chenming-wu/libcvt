@@ -3,6 +3,9 @@
 #include "lloyd_euclidean_cvd.h"
 
 namespace libcvd{
+	inline unsigned RGB(double x) {
+		return  (x < 0) ? 0 : (x > 255) ? 255 : unsigned(x);
+	}
     struct SimpleMesh{
         std::vector<std::vector<double> > verts;
 		std::vector<std::vector<int> > faces;
@@ -24,21 +27,19 @@ namespace libcvd{
 			c[0] = x; c[1] = y; c[2] = z;
 			vertColor.push_back(c);
 		}
-<<<<<<< HEAD
 
-		void load_obj(std::string filename) {
+		bool loadOFF(std::string filename) {
 			using namespace std;
-			V.clear();
-			F.clear();
-			N.clear();
-			C.clear();
-
+			FILE* off_file;
+			errno_t err = fopen_s(&off_file, filename.c_str(), "r");
+			if (err != 0) return false;
 			// First line is always OFF
 			char header[1000];
 			const std::string OFF("OFF");
 			const std::string NOFF("NOFF");
 			const std::string COFF("COFF");
-			if (fscanf(off_file, "%s\n", header) != 1
+			std::cout << "hello" << std::endl;
+			if (std::fscanf(off_file, "%s\n", header) != 1
 				|| !(
 					string(header).compare(0, OFF.length(), OFF) == 0 ||
 					string(header).compare(0, COFF.length(), COFF) == 0 ||
@@ -63,13 +64,14 @@ namespace libcvd{
 				still_comments = line[0] == '#';
 			}
 			sscanf(line, "%d %d %d", &number_of_vertices, &number_of_faces, &number_of_edges);
-			V.resize(number_of_vertices);
+			verts.resize(number_of_vertices);
+			faces.resize(number_of_faces);
 			if (has_normals)
-				N.resize(number_of_vertices);
+				;// N.resize(number_of_vertices);
 			if (has_vertexColors)
-				C.resize(number_of_vertices);
-			F.resize(number_of_faces);
-			//printf("%s %d %d %d\n",(has_normals ? "NOFF" : "OFF"),number_of_vertices,number_of_faces,number_of_edges);
+				vertColor.resize(number_of_vertices);
+			
+			printf("%s %d %d %d\n",(has_normals ? "NOFF" : "OFF"),number_of_vertices,number_of_faces,number_of_edges);
 			// Read vertices
 			for (int i = 0; i < number_of_vertices;)
 			{
@@ -77,29 +79,28 @@ namespace libcvd{
 				double x, y, z, nx, ny, nz;
 				if (sscanf(line, "%lg %lg %lg %lg %lg %lg", &x, &y, &z, &nx, &ny, &nz) >= 3)
 				{
-					std::vector<Scalar > vertex;
-					vertex.resize(3);
+					std::vector<double> vertex(3);
 					vertex[0] = x;
 					vertex[1] = y;
 					vertex[2] = z;
-					V[i] = vertex;
+					verts[i] = vertex;
 
 					if (has_normals)
 					{
-						std::vector<Scalar > normal;
-						normal.resize(3);
+						std::vector<double> normal(3);
 						normal[0] = nx;
 						normal[1] = ny;
 						normal[2] = nz;
-						N[i] = normal;
+						//N[i] = normal;
 					}
 
 					if (has_vertexColors)
 					{
-						C[i].resize(3);
-						C[i][0] = nx / 255.0;
-						C[i][1] = ny / 255.0;
-						C[i][2] = nz / 255.0;
+						std::vector<double> color(3);
+						color[0] = nx / 255.0;
+						color[1] = ny / 255.0;
+						color[2] = nz / 255.0;
+						vertColor[i] = color;
 					}
 					i++;
 				}
@@ -124,7 +125,7 @@ namespace libcvd{
 			// Read faces
 			for (int i = 0; i < number_of_faces;)
 			{
-				std::vector<Index > face;
+				std::vector<int> face;
 				int valence;
 				if (fscanf(off_file, "%d", &valence) == 1)
 				{
@@ -142,7 +143,7 @@ namespace libcvd{
 
 						face[j] = index;
 					}
-					F[i] = face;
+					faces[i] = face;
 					i++;
 				}
 				else if (
@@ -161,8 +162,33 @@ namespace libcvd{
 			fclose(off_file);
 			return true;
 		}
-=======
->>>>>>> 7ae14886754d9e8aa0b6c81c7bfdd5c1d84f41f0
+		
+		bool writeOFF(string filename) {
+			std::ofstream s(filename);
+			bool hasColor = !vertColor.empty();
+			if (!hasColor) {
+				s << "OFF\n" << verts.size() << " " << faces.size() << " 0\n";
+			}
+			else {
+				s << "COFF\n" << verts.size() << " " << faces.size() << " 0\n";
+			}
+			
+			for (unsigned i = 0; i < verts.size(); ++i) {
+				if (hasColor) {
+					s << verts[i][0] << " " << verts[i][1] << " " << verts[i][2] << " ";
+					s << RGB(vertColor[i][0] * 255.0) << " " << RGB(vertColor[i][1] * 255.0) << " " << RGB(vertColor[i][2] * 255.0) << std::endl;
+				}
+				else {
+					s << verts[i][0] << " " << verts[i][1] << " " << verts[i][2] << " ";
+				}
+			}
+
+			for (unsigned i = 0; i < faces.size(); ++i) {
+				s << "3 " << faces[i][0] << " " << faces[i][1] << " " << faces[i][2] << std::endl;
+			}
+			s.close();
+			return true;
+		}
     };
 
     void computeCVT(SimpleMesh & m, int regions = 20, int iterations = 200)
