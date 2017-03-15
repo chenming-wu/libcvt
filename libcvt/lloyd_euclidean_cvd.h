@@ -205,7 +205,7 @@ void LloydCvd::update_regions(Mesh* mesh)
 		for(PatchIter p = mesh->patches_begin(); p != mesh->patches_end(); p++)
 		{
 			Patch& pp = *(*p);
-		
+			
 			double energy = get_energy(pp,ff);
 			if ( energy < min_energy )
 			{

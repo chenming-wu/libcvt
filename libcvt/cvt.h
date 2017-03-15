@@ -3,7 +3,7 @@
 #include "lloyd_euclidean_cvd.h"
 
 namespace libcvd{
-	inline unsigned RGB(double x) {
+	inline unsigned to_RGB(double x) {
 		return  (x < 0) ? 0 : (x > 255) ? 255 : unsigned(x);
 	}
     struct SimpleMesh{
@@ -176,7 +176,7 @@ namespace libcvd{
 			for (unsigned i = 0; i < verts.size(); ++i) {
 				if (hasColor) {
 					s << verts[i][0] << " " << verts[i][1] << " " << verts[i][2] << " ";
-					s << RGB(vertColor[i][0] * 255.0) << " " << RGB(vertColor[i][1] * 255.0) << " " << RGB(vertColor[i][2] * 255.0) << std::endl;
+					s << to_RGB(vertColor[i][0] * 255.0) << " " << to_RGB(vertColor[i][1] * 255.0) << " " << to_RGB(vertColor[i][2] * 255.0) << std::endl;
 				}
 				else {
 					s << verts[i][0] << " " << verts[i][1] << " " << verts[i][2] << " ";
@@ -191,45 +191,53 @@ namespace libcvd{
 		}
     };
 
-    void computeCVT(SimpleMesh & m, int regions = 20, int iterations = 200)
-    {
-        Mesh mesh;
+	void computeCVT(SimpleMesh & m, int regions = 20, int iterations = 200)
+	{
+		Mesh mesh;
 
-        // insert vertices:
-        Vertex** verts = new Vertex*[m.verts.size()];
-        for(int i = 0; i < (int)m.verts.size(); i++)
-        {
-            verts[i] = new Vertex();
-            verts[i]->a = Point(m.verts[i][0], m.verts[i][1], m.verts[i][2]);
+		// insert vertices:
+		Vertex** verts = new Vertex*[m.verts.size()];
+		for (int i = 0; i < (int)m.verts.size(); i++)
+		{
+			verts[i] = new Vertex();
+			verts[i]->a = Point(m.verts[i][0], m.verts[i][1], m.verts[i][2]);
 			verts[i]->index = i;
-            mesh.put_vertex(verts[i]);
-        }
+			mesh.put_vertex(verts[i]);
+		}
 
-        auto hedges = new HedgeMap();
+		auto hedges = new HedgeMap();
 
-        // insert faces:
-        for(int i = 0; i < (int)m.faces.size(); i++)
-            mesh.put_face(m.faces[i][0], m.faces[i][1], m.faces[i][2], verts, hedges);
+		// insert faces:
+		for (int i = 0; i < (int)m.faces.size(); i++)
+			mesh.put_face(m.faces[i][0], m.faces[i][1], m.faces[i][2], verts, hedges);
 
 		// build adjacency
 		mesh.link_mesh();
 
 		// Compute CVT
-        LloydCvd cvd(&mesh);
+		LloydCvd cvd(&mesh);
 		cvd.lloyd_euclidean_cvd(&mesh, regions, iterations);
 
 		// DEBUG with vertex colors:
 		std::map < int, std::vector<double> > vcolors;
-		for (auto p : mesh.pc_){
+		for (auto p : mesh.pc_) {
 			std::vector<double> c(3);
-			c[0] = random1();c[1] = random1();c[2] = random1();
+			//c[0] = random1();c[1] = random1();c[2] = random1();
+			c[0] = rand() / (double)RAND_MAX; c[1] = rand() / (double)RAND_MAX; c[2] = rand() / (double)RAND_MAX;
 			for (auto f : p->fpc_)
 				for (int i = 0; i < 3; i++)
 					vcolors[f->vertex(i)->index] = c;
 		}
-		for (auto keyValue : vcolors){
+		for (auto keyValue : vcolors) {
 			auto c = keyValue.second;
 			m.addVertexColor(c[0], c[1], c[2]);
 		}
+
+		std::ofstream fileSources("source.txt");
+		fileSources << mesh.pc_.size() << std::endl;
+		for (auto f : mesh.pc_) {
+			fileSources << "0 0 " << f->center().x << " " << f->center().y << " " << f->center().z << std::endl;;
+		}
+		fileSources.close();
     }
 }
